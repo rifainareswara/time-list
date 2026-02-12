@@ -32,7 +32,7 @@
 
     <!-- Main -->
     <main class="flex-1 overflow-y-auto p-8 bg-slate-950">
-      <div class="max-w-5xl mx-auto">
+      <div class="w-10/12 mx-auto">
         <slot />
       </div>
     </main>

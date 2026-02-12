@@ -30,7 +30,7 @@ services:
       context: ./frontend-nuxt
       dockerfile: Dockerfile
     ports:
-      - "8005:3000"
+      - "8005:8005"
     volumes:
       - /app/node_modules
     environment:

@@ -117,4 +117,19 @@ async fn run_migrations(pool: &DbPool) {
     // Assign existing tasks without project to default
     sqlx::query("UPDATE tasks SET project_id = 'default' WHERE project_id IS NULL")
         .execute(pool).await.ok();
+
+    // ─── Auth Tables ───
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'user',
+            created_at TEXT NOT NULL
+        )",
+    )
+    .execute(pool)
+    .await
+    .unwrap();
 }

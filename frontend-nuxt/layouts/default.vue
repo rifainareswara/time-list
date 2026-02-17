@@ -27,8 +27,22 @@
         <NuxtLink to="/reports" class="flex items-center px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" active-class="bg-slate-800 text-white font-medium">
           <span>Reports</span>
         </NuxtLink>
+        
+        <div v-if="auth.isAdmin" class="pt-4 mt-4 border-t border-slate-800">
+          <div class="px-4 text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Admin</div>
+          <NuxtLink to="/admin" class="flex items-center px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" active-class="bg-slate-800 text-white font-medium">
+            <span>User Management</span>
+          </NuxtLink>
+        </div>
       </nav>
-      <div class="p-4 border-t border-slate-800 text-center text-xs text-slate-600">
+      
+      <div class="p-4 border-t border-slate-800">
+        <button @click="auth.logout()" class="w-full flex items-center justify-center px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-sm font-medium transition-colors">
+          Sign Out
+        </button>
+      </div>
+
+      <div class="p-4 text-center text-xs text-slate-600">
         <div>Sic Mundus v1.0</div>
         <div class="mt-1 opacity-50">made with ❤️ rifai</div>
       </div>
@@ -42,3 +56,9 @@
     </main>
   </div>
 </template>
+
+<script setup>
+import { useAuthStore } from '~/stores/auth'
+
+const auth = useAuthStore()
+</script>

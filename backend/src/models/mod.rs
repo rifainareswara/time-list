@@ -4,3 +4,4 @@ pub mod dashboard;
 pub mod timer;
 pub mod subtask;
 pub mod project;
+pub mod user;

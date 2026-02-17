@@ -55,7 +55,7 @@
 
       <div class="bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-800">
         <div class="mb-6 flex items-center justify-between">
-          <h3 class="font-bold text-slate-200 text-lg">🍩 Time per Category</h3>
+          <h3 class="font-bold text-slate-200 text-lg">🍩 Time per Project</h3>
         </div>
         <div class="h-72 relative flex justify-center">
           <Doughnut v-if="doughnutData" :data="doughnutData" :options="doughnutOptions" />
@@ -97,26 +97,29 @@
         </div>
       </div>
 
-      <!-- Category Stats List -->
+      <!-- Project Stats List -->
       <div class="bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-800">
         <div class="mb-6">
-          <h3 class="font-bold text-slate-200 text-lg">📂 Category Details</h3>
+          <h3 class="font-bold text-slate-200 text-lg">📂 Project Details</h3>
         </div>
         <div>
-          <div v-if="dashboard?.category_stats?.length">
-            <div v-for="cat in dashboard.category_stats" :key="cat.category" class="mb-4 last:mb-0">
+          <div v-if="dashboard?.project_stats?.length">
+            <div v-for="proj in dashboard.project_stats" :key="proj.name" class="mb-4 last:mb-0">
               <div class="flex justify-between items-center mb-1.5 text-sm">
-                <span class="font-medium text-slate-300">{{ cat.category }}</span>
-                <span class="text-slate-500 text-xs">{{ cat.task_count }} tasks · {{ formatHours(cat.total_minutes) }}h</span>
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full shrink-0" :style="{ backgroundColor: proj.color }"></span>
+                  <span class="font-medium text-slate-300">{{ proj.name }}</span>
+                </div>
+                <span class="text-slate-500 text-xs">{{ proj.task_count }} tasks · {{ formatHours(proj.total_minutes) }}h</span>
               </div>
               <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
-                <div class="h-full bg-blue-500 rounded-full" :style="{ width: getCatWidth(cat.total_minutes) + '%' }"></div>
+                <div class="h-full rounded-full" :style="{ width: getProjectWidth(proj.total_minutes) + '%', backgroundColor: proj.color }"></div>
               </div>
             </div>
           </div>
           <div v-else class="py-12 flex flex-col items-center justify-center text-slate-600 text-center">
             <div class="text-4xl mb-3 opacity-30">📊</div>
-            <p>No category data yet</p>
+            <p>No project data yet</p>
           </div>
         </div>
       </div>
@@ -199,16 +202,16 @@ const barOptions = {
   }
 }
 
-// Doughnut Chart Data (Category)
+// Doughnut Chart Data (Project)
 const doughnutData = computed(() => {
-  if (!dashboard.value?.category_stats?.length) return null
+  if (!dashboard.value?.project_stats?.length) return null
   
   return {
-    labels: dashboard.value.category_stats.map(c => c.category),
+    labels: dashboard.value.project_stats.map(p => p.name),
     datasets: [{
-      backgroundColor: ['#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#3b82f6', '#6366f1'],
+      backgroundColor: dashboard.value.project_stats.map(p => p.color),
       borderColor: 'transparent',
-      data: dashboard.value.category_stats.map(c => c.total_minutes)
+      data: dashboard.value.project_stats.map(p => p.total_minutes)
     }]
   }
 })
@@ -230,9 +233,9 @@ function formatHours(minutes) {
   return `${h}h${m}m`
 }
 
-function getCatWidth(minutes) {
-  if (!dashboard.value?.category_stats?.length) return 0
-  const max = Math.max(...dashboard.value.category_stats.map((c) => c.total_minutes))
+function getProjectWidth(minutes) {
+  if (!dashboard.value?.project_stats?.length) return 0
+  const max = Math.max(...dashboard.value.project_stats.map((p) => p.total_minutes))
   if (max === 0) return 0
   return (minutes / max) * 100
 }

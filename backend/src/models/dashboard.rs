@@ -11,7 +11,7 @@ pub struct DashboardSummary {
     pub total_minutes_month: i64,
     pub total_entries_today: i64,
     pub recent_entries: Vec<RecentEntry>,
-    pub category_stats: Vec<CategoryStat>,
+    pub project_stats: Vec<ProjectStat>,
     pub daily_minutes: Vec<DailyMinutes>,
 }
 
@@ -26,8 +26,9 @@ pub struct RecentEntry {
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct CategoryStat {
-    pub category: String,
+pub struct ProjectStat {
+    pub name: String,
+    pub color: String,
     pub task_count: i64,
     pub total_minutes: i64,
 }

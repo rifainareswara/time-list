@@ -14,9 +14,13 @@
         <NuxtLink to="/" class="flex items-center px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" active-class="bg-slate-800 text-white font-medium">
           <span>Dashboard</span>
         </NuxtLink>
+        <NuxtLink to="/projects" class="flex items-center px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" active-class="bg-slate-800 text-white font-medium">
+          <span>Projects</span>
+        </NuxtLink>
         <NuxtLink to="/tasks" class="flex items-center px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" active-class="bg-slate-800 text-white font-medium">
           <span>Tasks</span>
         </NuxtLink>
+
         <NuxtLink to="/time-log" class="flex items-center px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" active-class="bg-slate-800 text-white font-medium">
           <span>Time Log</span>
         </NuxtLink>

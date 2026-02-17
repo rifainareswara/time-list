@@ -8,16 +8,38 @@ pub struct Task {
     pub description: String,
     pub category: String,
     pub status: String,
+    #[serde(default = "default_priority")]
+    #[sqlx(default)]
+    pub priority: String,
     pub start_date: Option<String>,
     pub due_date: Option<String>,
     pub created_at: String,
     pub updated_at: String,
     #[serde(default)]
     #[sqlx(default)]
+    pub project_id: Option<String>,
+    #[serde(default)]
+    #[sqlx(default)]
+    pub project_name: Option<String>,
+    #[serde(default)]
+    #[sqlx(default)]
+    pub project_color: Option<String>,
+    #[serde(default)]
+    #[sqlx(default)]
     pub total_minutes: i64,
     #[serde(default)]
     #[sqlx(default)]
     pub entry_count: i64,
+    #[serde(default)]
+    #[sqlx(default)]
+    pub subtask_count: i64,
+    #[serde(default)]
+    #[sqlx(default)]
+    pub subtask_done: i64,
+}
+
+fn default_priority() -> String {
+    "normal".into()
 }
 
 #[derive(Debug, Deserialize)]
@@ -27,6 +49,10 @@ pub struct CreateTaskRequest {
     pub description: Option<String>,
     #[serde(default)]
     pub category: Option<String>,
+    #[serde(default)]
+    pub priority: Option<String>,
+    #[serde(default)]
+    pub project_id: Option<String>,
     #[serde(default)]
     pub start_date: Option<String>,
     #[serde(default)]
@@ -39,6 +65,8 @@ pub struct UpdateTaskRequest {
     pub description: Option<String>,
     pub category: Option<String>,
     pub status: Option<String>,
+    pub priority: Option<String>,
+    pub project_id: Option<String>,
     pub start_date: Option<String>,
     pub due_date: Option<String>,
 }

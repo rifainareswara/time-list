@@ -24,6 +24,18 @@ export const api = {
   deleteEntry: (id) => request(`/entries/${id}`, { method: 'DELETE' }),
   getAllEntries: () => request('/entries'),
 
+  // Subtasks
+  getSubtasks: (taskId) => request(`/tasks/${taskId}/subtasks`),
+  createSubtask: (taskId, data) => request(`/tasks/${taskId}/subtasks`, { method: 'POST', body: JSON.stringify(data) }),
+  updateSubtask: (id, data) => request(`/subtasks/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteSubtask: (id) => request(`/subtasks/${id}`, { method: 'DELETE' }),
+
+  // Projects
+  getProjects: () => request('/projects'),
+  createProject: (data) => request('/projects', { method: 'POST', body: JSON.stringify(data) }),
+  updateProject: (id, data) => request(`/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteProject: (id) => request(`/projects/${id}`, { method: 'DELETE' }),
+
   // Dashboard
   getDashboard: () => request('/dashboard/summary'),
 
@@ -36,6 +48,7 @@ export const api = {
 export const useTaskStore = defineStore('task', {
   state: () => ({
     tasks: [],
+    projects: [],
     entries: [],
     allEntries: [],
     dashboard: null,
@@ -112,6 +125,71 @@ export const useTaskStore = defineStore('task', {
       await this.fetchTasks()
     },
 
+    // ─── Subtasks ───
+
+    async fetchSubtasks(taskId) {
+      return await api.getSubtasks(taskId)
+    },
+
+    async addSubtask(taskId, title) {
+      const subtask = await api.createSubtask(taskId, { title })
+      const task = this.tasks.find((t) => t.id === taskId)
+      if (task) task.subtask_count = (task.subtask_count || 0) + 1
+      return subtask
+    },
+
+    async toggleSubtask(subtaskId, completed) {
+      const subtask = await api.updateSubtask(subtaskId, { completed })
+      const task = this.tasks.find((t) => t.id === subtask.task_id)
+      if (task) {
+        if (completed) {
+          task.subtask_done = (task.subtask_done || 0) + 1
+        } else {
+          task.subtask_done = Math.max(0, (task.subtask_done || 0) - 1)
+        }
+      }
+      return subtask
+    },
+
+    async removeSubtask(subtaskId, taskId) {
+      await api.deleteSubtask(subtaskId)
+      const task = this.tasks.find((t) => t.id === taskId)
+      if (task) {
+        task.subtask_count = Math.max(0, (task.subtask_count || 0) - 1)
+      }
+    },
+
+    // ─── Projects ───
+
+    async fetchProjects() {
+      try {
+        this.projects = await api.getProjects()
+      } catch (e) {
+        this.error = e.message
+      }
+    },
+
+    async createProject(data) {
+      const project = await api.createProject(data)
+      this.projects.push(project)
+      return project
+    },
+
+    async updateProject(id, data) {
+      const project = await api.updateProject(id, data)
+      const idx = this.projects.findIndex((p) => p.id === id)
+      if (idx !== -1) this.projects[idx] = project
+      return project
+    },
+
+    async deleteProject(id) {
+      await api.deleteProject(id)
+      this.projects = this.projects.filter((p) => p.id !== id)
+      await this.fetchTasks()
+    },
+
+    // ─── Dashboard ───
+
     async fetchDashboard() {
       this.loading = true
       try {
@@ -159,7 +237,7 @@ export const useTaskStore = defineStore('task', {
         this.activeTimer = timer
         this.timerElapsed = 0
         this._startLocalTick()
-        await this.fetchTasks() // refresh statuses
+        await this.fetchTasks()
       } catch (e) {
         this.error = e.message
       }
@@ -171,7 +249,7 @@ export const useTaskStore = defineStore('task', {
         this.activeTimer = null
         this.timerElapsed = 0
         this._stopLocalTick()
-        await this.fetchTasks() // refresh statuses
+        await this.fetchTasks()
         return res
       } catch (e) {
         this.error = e.message

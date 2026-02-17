@@ -52,12 +52,13 @@ pub async fn get_dashboard(pool: web::Data<DbPool>) -> impl Responder {
     .await
     .unwrap_or_default();
 
-    let category_stats: Vec<CategoryStat> = query_as(
-        "SELECT t.category, COUNT(DISTINCT t.id)::BIGINT as task_count, COALESCE(SUM(e.duration_minutes), 0)::BIGINT as total_minutes
-         FROM tasks t
+    let project_stats: Vec<ProjectStat> = query_as(
+        "SELECT p.name, p.color, COUNT(DISTINCT t.id)::BIGINT as task_count, COALESCE(SUM(e.duration_minutes), 0)::BIGINT as total_minutes
+         FROM projects p
+         LEFT JOIN tasks t ON t.project_id = p.id
          LEFT JOIN time_entries e ON e.task_id = t.id
-         GROUP BY t.category
-         ORDER BY t.category"
+         GROUP BY p.id, p.name, p.color
+         ORDER BY total_minutes DESC"
     )
     .fetch_all(pool.get_ref())
     .await
@@ -83,7 +84,7 @@ pub async fn get_dashboard(pool: web::Data<DbPool>) -> impl Responder {
         total_minutes_month,
         total_entries_today,
         recent_entries,
-        category_stats,
+        project_stats,
         daily_minutes: daily_minutes.into_iter().map(|d| DailyMinutes {
             date: d.date.or(Some("".to_string())),
             minutes: d.minutes.or(Some(0)),

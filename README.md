@@ -11,12 +11,25 @@
 - **Time Log**: Full work history with duration, notes, and date filtering.
 - **Visual Dashboard**: Daily activity bar chart, **Time per Project** donut chart, project details breakdown, and recent notes.
 - **Reports**: Analytics and productivity reports.
+- **Authentication & Security**: Secure Login/Register with Argon2 hashing and JWT sessions.
+- **Role Management**: Admin & User roles. Admins can manage users and reset passwords.
 - **Premium Design**: Dark mode interface with glassmorphism, hover effects, and smooth transitions.
+
+## 🛡️ Default Credentials
+
+The **first registered user** automatically becomes **Admin**.
+If you are running for the first time, you can register as:
+
+- **Username**: `admin`
+- **Password**: `admin123` (or any password you choose)
+
+Additional users will have the **User** role by default. Admins can promote/demote users via the dashboard.
 
 ## 🛠 Technology Stack
 
 - **Frontend**: Nuxt 3, Vue 3, Pinia, Chart.js, Tailwind CSS
-- **Backend**: Rust (Actix Web), PostgreSQL, SQLx
+- **Backend**: Rust (Actix Web), PostgreSQL, SQLx, Argon2, JWT
+
 - **Containerization**: Docker & Docker Compose
 
 ## 📦 How to Run
@@ -130,6 +143,23 @@ Prerequisites: Rust (cargo), Node.js (npm), PostgreSQL.
 | Method | Endpoint                 | Description                                 |
 | ------ | ------------------------ | ------------------------------------------- |
 | `GET`  | `/api/dashboard/summary` | Dashboard stats, charts & project breakdown |
+
+### Authentication
+
+| Method | Endpoint             | Description                       |
+| ------ | -------------------- | --------------------------------- |
+| `POST` | `/api/auth/register` | Register new user (First = Admin) |
+| `POST` | `/api/auth/login`    | Login and get JWT                 |
+| `GET`  | `/api/auth/me`       | Get current user info             |
+
+### User Management (Admin Only)
+
+| Method   | Endpoint                   | Description         |
+| -------- | -------------------------- | ------------------- |
+| `GET`    | `/api/users`               | List all users      |
+| `DELETE` | `/api/users/{id}`          | Delete a user       |
+| `PUT`    | `/api/users/{id}/role`     | Promote/Demote user |
+| `PUT`    | `/api/users/{id}/password` | Reset user password |
 
 ---
 

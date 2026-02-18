@@ -15,30 +15,73 @@
 - **Role Management**: Admin & User roles. Admins can manage users and reset passwords.
 - **Premium Design**: Dark mode interface with glassmorphism, hover effects, and smooth transitions.
 
-## 🛡️ Default Credentials
+## 🛡️ Role System (3-Tier)
 
-The **first registered user** automatically becomes **Admin**.
-If you are running for the first time, you can register as:
+**Sic Mundus** now features a robust 3-tier role system:
 
-- **Username**: `admin`
-- **Password**: `admin123` (or any password you choose)
+| Role           | Access Level    | Capabilities                                                                                                        |
+| -------------- | --------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Superadmin** | 🟡 Gold Badge   | Full access. Can manage all users (including Admins), view all tasks, and see full time reports. Cannot be deleted. |
+| **Admin**      | 🟣 Purple Badge | Department level access. Can manage **Users** (but not other Admins). Sees only User tasks and time reports.        |
+| **User**       | ⬜ Slate Badge  | Personal access. Can only manage their own tasks and profile.                                                       |
 
-Additional users will have the **User** role by default. Admins can promote/demote users via the dashboard.
+> **Note:** The **first registered user** is automatically assigned the **Superadmin** role.
+
+## 💾 Data Persistence & Deployment
+
+This project uses a **Docker external volume** (`postgres_data`) to ensure database data is preserved across container rebuilds and deployments.
+
+### Initial Setup (Production)
+
+Run this command once on your server to create the persistent volume:
+
+```bash
+docker volume create postgres_data
+```
+
+### Deployment Scripts
+
+We provide scripts to ensure safe deployments:
+
+- **`scripts/backup-db.sh`**: Creates a timestamped backup of the database (schema + data) to `backups/`.
+- **`scripts/deploy.sh`**: Automates the safe deployment process:
+  1. Runs a database backup.
+  2. Rebuilds and restarts containers (`docker compose up -d --build`).
+  3. **Preserves data** (does NOT use `-v` flag).
+
+**To deploy:**
+
+```bash
+./scripts/deploy.sh
+```
+
+## 📊 Enhanced Time Report (Admin)
+
+The **Time Report** (`/admin/time-report`) provides deep insights into team productivity:
+
+- **Monthly Filter**: Navigate between months to see historical performance.
+- **Dual Totals**: View both **monthly** hours and **all-time** cumulative hours side-by-side.
+- **Per-User Breakdown**: Detailed project-wise breakdown for each user with a clear **Total** row.
+- **Summary Cards**: Quick stats for active users, total hours, and top performers.
 
 ## 🛠 Technology Stack
 
 - **Frontend**: Nuxt 3, Vue 3, Pinia, Chart.js, Tailwind CSS
 - **Backend**: Rust (Actix Web), PostgreSQL, SQLx, Argon2, JWT
-
-- **Containerization**: Docker & Docker Compose
+- **Infrastructure**: Docker, Docker Compose, Shell Scripts
 
 ## 📦 How to Run
 
 ### Using Docker (Recommended)
 
-```bash
-docker compose up -d --build
-```
+1. Create volume (first time only):
+   ```bash
+   docker volume create postgres_data
+   ```
+2. Start services:
+   ```bash
+   docker compose up -d --build
+   ```
 
 The application will be available at:
 
@@ -72,95 +115,47 @@ Prerequisites: Rust (cargo), Node.js (npm), PostgreSQL.
 ├── backend/                  # Rust Actix Web API
 │   └── src/
 │       ├── db/               # PostgreSQL connection & migrations
-│       ├── handlers/         # API handlers (task, entry, project, subtask, timer, dashboard)
+│       ├── handlers/         # API handlers (auth, user, task, entry, project, etc.)
 │       ├── models/           # Data structures
 │       └── routes.rs         # Route configuration
 │
 ├── frontend-nuxt/            # Nuxt 3 Application
 │   ├── layouts/              # App layout with sidebar navigation
 │   ├── pages/                # Page components
-│   │   ├── index.vue         # Dashboard (charts, stats, recent activity)
-│   │   ├── tasks.vue         # Unified Tasks (List + Board view toggle)
-│   │   ├── projects.vue      # Project management with search
-│   │   ├── time-log.vue      # Time log history
-│   │   └── reports.vue       # Reports & analytics
-│   ├── stores/               # Pinia state management
-│   └── nuxt.config.ts        # Nuxt config (SPA mode, proxy)
+│   │   ├── admin/            # Admin pages (User Management, Time Report)
+│   │   ├── index.vue         # Dashboard
+│   │   ├── tasks.vue         # Unified Tasks
+│   │   └── ...
+│   ├── stores/               # Pinia properties
+│   └── middleware/           # Auth middleware
 │
-├── docker-compose.yml        # Docker orchestration (frontend, backend, PostgreSQL)
+├── scripts/                  # Deployment & Maintenance scripts
+│   ├── deploy.sh             # Safe deployment script
+│   └── backup-db.sh          # Database backup script
+│
+├── docker-compose.yml        # Docker orchestration
 └── README.md
 ```
 
 ## 📝 API Endpoints
 
-### Tasks
-
-| Method   | Endpoint                 | Description       |
-| -------- | ------------------------ | ----------------- |
-| `GET`    | `/api/tasks`             | Fetch all tasks   |
-| `POST`   | `/api/tasks`             | Create a new task |
-| `PUT`    | `/api/tasks/{id}`        | Update a task     |
-| `DELETE` | `/api/tasks/{id}`        | Delete a task     |
-| `POST`   | `/api/tasks/bulk-delete` | Bulk delete tasks |
-
-### Subtasks
-
-| Method   | Endpoint                   | Description             |
-| -------- | -------------------------- | ----------------------- |
-| `GET`    | `/api/tasks/{id}/subtasks` | Get subtasks for a task |
-| `POST`   | `/api/tasks/{id}/subtasks` | Create a subtask        |
-| `PUT`    | `/api/subtasks/{id}`       | Update a subtask        |
-| `DELETE` | `/api/subtasks/{id}`       | Delete a subtask        |
-
-### Time Entries
-
-| Method   | Endpoint                  | Description            |
-| -------- | ------------------------- | ---------------------- |
-| `GET`    | `/api/entries`            | Get all time entries   |
-| `GET`    | `/api/tasks/{id}/entries` | Get entries for a task |
-| `POST`   | `/api/tasks/{id}/entries` | Create a time entry    |
-| `DELETE` | `/api/entries/{id}`       | Delete a time entry    |
-
-### Projects
-
-| Method   | Endpoint             | Description                     |
-| -------- | -------------------- | ------------------------------- |
-| `GET`    | `/api/projects`      | Fetch all projects (with stats) |
-| `POST`   | `/api/projects`      | Create a project                |
-| `PUT`    | `/api/projects/{id}` | Update a project                |
-| `DELETE` | `/api/projects/{id}` | Delete a project                |
-
-### Timer
-
-| Method | Endpoint                     | Description            |
-| ------ | ---------------------------- | ---------------------- |
-| `POST` | `/api/timer/start/{task_id}` | Start timer for a task |
-| `POST` | `/api/timer/stop`            | Stop active timer      |
-| `GET`  | `/api/timer/active`          | Get active timer info  |
-
-### Dashboard
-
-| Method | Endpoint                 | Description                                 |
-| ------ | ------------------------ | ------------------------------------------- |
-| `GET`  | `/api/dashboard/summary` | Dashboard stats, charts & project breakdown |
-
 ### Authentication
 
-| Method | Endpoint             | Description                       |
-| ------ | -------------------- | --------------------------------- |
-| `POST` | `/api/auth/register` | Register new user (First = Admin) |
-| `POST` | `/api/auth/login`    | Login and get JWT                 |
-| `GET`  | `/api/auth/me`       | Get current user info             |
+| Method | Endpoint             | Description           |
+| ------ | -------------------- | --------------------- |
+| `POST` | `/api/auth/register` | Register new user     |
+| `POST` | `/api/auth/login`    | Login and get JWT     |
+| `GET`  | `/api/auth/me`       | Get current user info |
 
-### User Management (Admin Only)
+### Admin & Reports
 
-| Method   | Endpoint                   | Description         |
-| -------- | -------------------------- | ------------------- |
-| `GET`    | `/api/users`               | List all users      |
-| `DELETE` | `/api/users/{id}`          | Delete a user       |
-| `PUT`    | `/api/users/{id}/role`     | Promote/Demote user |
-| `PUT`    | `/api/users/{id}/password` | Reset user password |
+| Method   | Endpoint                 | Description                                         |
+| -------- | ------------------------ | --------------------------------------------------- |
+| `GET`    | `/api/admin/time-report` | Get detailed time report (params: `?month=YYYY-MM`) |
+| `GET`    | `/api/users`             | List users (Role-aware)                             |
+| `DELETE` | `/api/users/{id}`        | Delete user (Role-aware)                            |
+| `PUT`    | `/api/users/{id}/role`   | Change user role                                    |
 
 ---
 
-_Made with ❤️ by rifai_
+_Made with ❤️_

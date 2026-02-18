@@ -16,6 +16,16 @@ export default defineNuxtRouteMiddleware((to, from) => {
     return navigateTo('/login')
   }
 
+  // Force Change Password
+  if (auth.user?.force_change_password && to.path !== '/change-password') {
+    return navigateTo('/change-password')
+  }
+
+  // Prevent accessing change-password if not required (optional, but good UX)
+  if (!auth.user?.force_change_password && to.path === '/change-password') {
+     return navigateTo('/')
+  }
+
   // Admin routes
   if (to.path.startsWith('/admin') && !auth.isAdmin) {
     // If we haven't fetched user yet but have token, we might not know if admin.

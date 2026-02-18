@@ -13,12 +13,16 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api")
             .wrap(middleware::auth::Auth)
-            .route("/auth/me", web::get().to(handlers::auth::me))
+            .route("/me", web::get().to(handlers::auth::me))
+            .route("/password", web::put().to(handlers::auth::change_password))
+            .route("/me/profile", web::put().to(handlers::user::update_profile))
             // Admin Routes
             .route("/users", web::get().to(handlers::user::get_users))
             .route("/users/{id}", web::delete().to(handlers::user::delete_user))
             .route("/users/{id}/role", web::put().to(handlers::user::update_role))
             .route("/users/{id}/password", web::put().to(handlers::user::reset_password))
+            .route("/admin/tasks", web::get().to(handlers::task::get_all_tasks_admin))
+            .route("/admin/time-report", web::get().to(handlers::user::get_time_report_admin))
             // Task routes
             .route("/tasks/bulk-delete", web::post().to(handlers::task::delete_tasks_bulk))
             .route("/tasks", web::get().to(handlers::task::get_tasks))

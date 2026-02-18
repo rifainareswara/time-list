@@ -8,6 +8,17 @@
 
       <form @submit.prevent="handleRegister" class="space-y-6">
         <div>
+          <label class="block text-sm font-bold text-slate-400 mb-2 uppercase tracking-wide">Full Name</label>
+          <input 
+            v-model="fullName" 
+            type="text" 
+            class="w-full bg-slate-950 border border-slate-700 text-white rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+            placeholder="Your full name"
+            required
+          >
+        </div>
+
+        <div>
           <label class="block text-sm font-bold text-slate-400 mb-2 uppercase tracking-wide">Username</label>
           <input 
             v-model="username" 
@@ -70,6 +81,7 @@ definePageMeta({
 })
 
 const auth = useAuthStore()
+const fullName = ref('')
 const username = ref('')
 const password = ref('')
 const confirmPassword = ref('')
@@ -85,7 +97,7 @@ async function handleRegister() {
   loading.value = true
   error.value = ''
   
-  const success = await auth.register(username.value, password.value)
+  const success = await auth.register(username.value, password.value, fullName.value)
   if (success) {
     navigateTo('/')
   } else {

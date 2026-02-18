@@ -8,6 +8,7 @@ pub struct Project {
     pub color: String,
     pub description: String,
     pub created_at: String,
+    pub user_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, FromRow)]

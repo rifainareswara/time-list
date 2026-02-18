@@ -33,10 +33,19 @@
           <NuxtLink to="/admin" class="flex items-center px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" active-class="bg-slate-800 text-white font-medium">
             <span>User Management</span>
           </NuxtLink>
+          <NuxtLink to="/admin/tasks" class="flex items-center px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" active-class="bg-slate-800 text-white font-medium">
+            <span>All Tasks</span>
+          </NuxtLink>
+          <NuxtLink to="/admin/time-report" class="flex items-center px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" active-class="bg-slate-800 text-white font-medium">
+            <span>Time Report</span>
+          </NuxtLink>
         </div>
       </nav>
       
-      <div class="p-4 border-t border-slate-800">
+      <div class="p-4 border-t border-slate-800 space-y-2">
+        <NuxtLink to="/profile" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors text-sm" active-class="bg-slate-800 text-white">
+          <span class="truncate">{{ auth.user?.full_name || auth.user?.username || 'Profile' }}</span>
+        </NuxtLink>
         <button @click="auth.logout()" class="w-full flex items-center justify-center px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-sm font-medium transition-colors">
           Sign Out
         </button>

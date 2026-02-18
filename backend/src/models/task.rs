@@ -11,6 +11,7 @@ pub struct Task {
     #[serde(default = "default_priority")]
     #[sqlx(default)]
     pub priority: String,
+    pub user_id: String,
     pub start_date: Option<String>,
     pub due_date: Option<String>,
     pub created_at: String,
@@ -40,6 +41,44 @@ pub struct Task {
 
 fn default_priority() -> String {
     "normal".into()
+}
+
+/// Used by the admin overview endpoint — includes the owner's username.
+#[derive(Debug, Serialize, Deserialize, Clone, FromRow)]
+pub struct AdminTask {
+    pub id: String,
+    pub title: String,
+    pub description: String,
+    pub category: String,
+    pub status: String,
+    #[serde(default = "default_priority")]
+    #[sqlx(default)]
+    pub priority: String,
+    pub user_id: String,
+    pub username: String,
+    pub full_name: String,
+    pub start_date: Option<String>,
+    pub due_date: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+    #[serde(default)]
+    #[sqlx(default)]
+    pub project_id: Option<String>,
+    #[serde(default)]
+    #[sqlx(default)]
+    pub project_name: Option<String>,
+    #[serde(default)]
+    #[sqlx(default)]
+    pub project_color: Option<String>,
+    #[serde(default)]
+    #[sqlx(default)]
+    pub total_minutes: i64,
+    #[serde(default)]
+    #[sqlx(default)]
+    pub subtask_count: i64,
+    #[serde(default)]
+    #[sqlx(default)]
+    pub subtask_done: i64,
 }
 
 #[derive(Debug, Deserialize)]

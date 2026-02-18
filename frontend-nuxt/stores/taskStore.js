@@ -1,11 +1,23 @@
 import { defineStore } from 'pinia'
 
+import { useAuthStore } from './auth'
+
 // Helper for API calls
 const API_BASE = '/api'
 async function request(url, options = {}) {
+  const auth = useAuthStore()
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {}),
+  }
+
+  if (auth.token) {
+    headers['Authorization'] = `Bearer ${auth.token}`
+  }
+
   const res = await fetch(`${API_BASE}${url}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers,
   })
   if (!res.ok) throw new Error(`API error: ${res.status}`)
   return res.json()

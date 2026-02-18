@@ -7,8 +7,11 @@ WORKDIR /app
 RUN apk add --no-cache curl build-base musl-dev sqlite-dev
 
 # Install Rust nightly
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly --profile minimal
-ENV PATH="/root/.cargo/bin:${PATH}"
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly --profile minimal --no-modify-path
 
 # Copy manifests
 COPY Cargo.toml ./

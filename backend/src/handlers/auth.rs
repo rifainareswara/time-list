@@ -42,15 +42,20 @@ pub async fn register(
         .unwrap_or(0);
 
     let role = if user_count == 0 { "admin" } else { "user" };
+    let full_name = body.full_name.trim().to_string();
+    if full_name.is_empty() {
+        return HttpResponse::BadRequest().body("Full name is required");
+    }
     let id = Uuid::new_v4().to_string();
     let created_at = Utc::now().to_rfc3339();
 
     // 4. Insert user
     let insert_result = query(
-        "INSERT INTO users (id, username, password_hash, role, created_at) VALUES ($1, $2, $3, $4, $5)",
+        "INSERT INTO users (id, username, full_name, password_hash, role, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
     )
     .bind(&id)
     .bind(&body.username)
+    .bind(&full_name)
     .bind(&password_hash)
     .bind(role)
     .bind(&created_at)
@@ -66,9 +71,11 @@ pub async fn register(
                 user: User {
                     id,
                     username: body.username.clone(),
+                    full_name,
                     role: role.to_string(),
                     password_hash: "".to_string(),
                     created_at,
+                    force_change_password: false,
                 },
             })
         }
@@ -106,9 +113,19 @@ pub async fn login(
     HttpResponse::Unauthorized().body("Invalid username or password")
 }
 
-pub async fn me(req: HttpRequest) -> impl Responder {
+pub async fn me(pool: web::Data<DbPool>, req: HttpRequest) -> impl Responder {
     if let Some(claims) = req.extensions().get::<AuthClaims>() {
-        HttpResponse::Ok().json(claims)
+        let user = query_as::<_, User>("SELECT * FROM users WHERE id = $1")
+            .bind(&claims.sub)
+            .fetch_optional(pool.get_ref())
+            .await
+            .unwrap_or(None);
+
+        if let Some(user) = user {
+            HttpResponse::Ok().json(user)
+        } else {
+            HttpResponse::Unauthorized().finish()
+        }
     } else {
         HttpResponse::Unauthorized().finish()
     }
@@ -133,4 +150,54 @@ fn generate_token(id: &str, role: &str) -> String {
         &EncodingKey::from_secret(secret.as_bytes()),
     )
     .expect("Token generation failed")
+}
+
+pub async fn change_password(
+    pool: web::Data<DbPool>,
+    req: HttpRequest,
+    body: web::Json<crate::models::user::ChangePasswordRequest>,
+) -> impl Responder {
+    let claims = match req.extensions().get::<AuthClaims>() {
+        Some(c) => c.sub.clone(), // ID
+        None => return HttpResponse::Unauthorized().finish(),
+    };
+
+    // 1. Get current user to verify old password
+    let user = query_as::<_, User>("SELECT * FROM users WHERE id = $1")
+        .bind(&claims)
+        .fetch_optional(pool.get_ref())
+        .await
+        .unwrap_or(None);
+
+    if let Some(user) = user {
+        // 2. Verify old password
+        let parsed_hash = PasswordHash::new(&user.password_hash).expect("Invalid hash in DB");
+        if Argon2::default()
+            .verify_password(body.old_password.as_bytes(), &parsed_hash)
+            .is_err()
+        {
+             return HttpResponse::BadRequest().body("Invalid old password");
+        }
+
+        // 3. Hash new password
+        let salt = SaltString::generate(&mut OsRng);
+        let password_hash = Argon2::default()
+            .hash_password(body.new_password.as_bytes(), &salt)
+            .expect("Failed to hash password")
+            .to_string();
+
+        // 4. Update password and reset force flag
+        let result = sqlx::query("UPDATE users SET password_hash = $1, force_change_password = FALSE WHERE id = $2")
+            .bind(password_hash)
+            .bind(&claims)
+            .execute(pool.get_ref())
+            .await;
+
+        match result {
+            Ok(_) => HttpResponse::Ok().finish(),
+            Err(_) => HttpResponse::InternalServerError().finish(),
+        }
+    } else {
+        HttpResponse::NotFound().finish()
+    }
 }

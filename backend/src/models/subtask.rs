@@ -9,6 +9,7 @@ pub struct Subtask {
     pub completed: bool,
     pub position: i32,
     pub created_at: String,
+    pub user_id: String,
 }
 
 #[derive(Debug, Deserialize)]

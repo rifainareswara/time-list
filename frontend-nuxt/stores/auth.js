@@ -4,6 +4,7 @@ export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
     token: useCookie('auth_token').value || null,
+    forceChangePassword: false,
   }),
   getters: {
     isAuthenticated: (state) => !!state.token,
@@ -21,6 +22,7 @@ export const useAuthStore = defineStore('auth', {
 
         this.setToken(data.value.token)
         this.user = data.value.user
+        this.forceChangePassword = data.value.user.force_change_password
         return true
       } catch (err) {
         console.error('Login failed', err)
@@ -28,11 +30,33 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async register(username, password) {
+    async changePassword(oldPassword, newPassword) {
+      try {
+        const { error } = await useFetch('/api/password', {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${this.token}` },
+          body: { old_password: oldPassword, new_password: newPassword }
+        })
+
+        if (error.value) throw error.value
+        
+        this.forceChangePassword = false
+        // Update user object locally
+        if (this.user) {
+           this.user.force_change_password = false
+        }
+        return true
+      } catch (err) {
+        console.error('Password change failed', err)
+        return false
+      }
+    },
+
+    async register(username, password, fullName = '') {
       try {
         const { data, error } = await useFetch('/api/auth/register', {
           method: 'POST',
-          body: { username, password },
+          body: { username, password, full_name: fullName },
         })
 
         if (error.value) throw error.value
@@ -50,7 +74,7 @@ export const useAuthStore = defineStore('auth', {
       if (!this.token) return
 
       try {
-        const { data, error } = await useFetch('/api/auth/me', {
+        const { data, error } = await useFetch('/api/me', {
           headers: { Authorization: `Bearer ${this.token}` },
         })
 
@@ -59,13 +83,8 @@ export const useAuthStore = defineStore('auth', {
           return
         }
 
-        this.user = { 
-          id: data.value.sub, 
-          role: data.value.role,
-          // We don't get username from 'me' endpoint currently, but that's fine for now
-          // or we could update 'me' to return full user object.
-          // For now, let's just stick with what we have.
-        }
+        this.user = data.value
+        this.forceChangePassword = data.value.force_change_password
       } catch (err) {
         this.logout()
       }

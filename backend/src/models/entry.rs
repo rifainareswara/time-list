@@ -9,6 +9,7 @@ pub struct TimeEntry {
     pub duration_minutes: i64,
     pub notes: String,
     pub created_at: String,
+    pub user_id: String,
 }
 
 #[derive(Debug, Deserialize)]

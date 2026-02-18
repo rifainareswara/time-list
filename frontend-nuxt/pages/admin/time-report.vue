@@ -1,101 +1,130 @@
 <template>
-  <div>
+  <div class="p-6 max-w-7xl mx-auto">
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-3xl font-black text-white tracking-tight">Time Report</h1>
-        <p class="text-slate-500 text-sm mt-1">Total hours logged per user per project</p>
+        <h1 class="text-2xl font-black text-white">Time Report</h1>
+        <p class="text-slate-400 text-sm mt-1">Total jam kerja per user per project</p>
+      </div>
+      <!-- Month Picker -->
+      <div class="flex items-center gap-3">
+        <button @click="prevMonth" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-sm">‹</button>
+        <input
+          type="month"
+          v-model="selectedMonth"
+          @change="fetchReport"
+          class="bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+        />
+        <button @click="nextMonth" :disabled="selectedMonth >= currentMonth" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-sm disabled:opacity-40 disabled:cursor-not-allowed">›</button>
       </div>
     </div>
 
     <!-- Summary Cards -->
-    <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-        <div class="text-slate-500 text-xs uppercase tracking-widest mb-1">Total Users</div>
-        <div class="text-3xl font-black text-white">{{ uniqueUsers.length }}</div>
+        <div class="text-xs text-slate-500 uppercase tracking-widest mb-1">Total Users</div>
+        <div class="text-2xl font-black text-white">{{ uniqueUsers.length }}</div>
       </div>
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-        <div class="text-slate-500 text-xs uppercase tracking-widest mb-1">Total Hours</div>
-        <div class="text-3xl font-black text-emerald-400">{{ totalHours }}h</div>
+        <div class="text-xs text-slate-500 uppercase tracking-widest mb-1">Jam Bulan Ini</div>
+        <div class="text-2xl font-black text-emerald-400">{{ formatHours(grandTotalPeriod) }}</div>
       </div>
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-        <div class="text-slate-500 text-xs uppercase tracking-widest mb-1">Most Active</div>
-        <div class="text-xl font-black text-blue-400 truncate">{{ mostActiveUser }}</div>
+        <div class="text-xs text-slate-500 uppercase tracking-widest mb-1">Total Semua Jam</div>
+        <div class="text-2xl font-black text-blue-400">{{ formatHours(grandTotalAllTime) }}</div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div class="text-xs text-slate-500 uppercase tracking-widest mb-1">Paling Aktif</div>
+        <div class="text-lg font-black text-purple-400 truncate">{{ mostActiveUser }}</div>
       </div>
     </div>
 
-    <!-- Filter -->
-    <div class="flex gap-3 mb-4">
-      <select
-        v-model="filterUser"
-        class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-blue-500"
-      >
-        <option value="">All Users</option>
-        <option v-for="u in uniqueUsers" :key="u.id" :value="u.id">{{ u.display }}</option>
+    <!-- Filter by user -->
+    <div class="flex items-center gap-3 mb-4">
+      <select v-model="filterUser" class="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+        <option value="">Semua User</option>
+        <option v-for="u in uniqueUsers" :key="u.id" :value="u.id">{{ u.full_name || u.username }}</option>
       </select>
-      <button
-        v-if="filterUser"
-        @click="filterUser = ''"
-        class="px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 text-sm transition-colors"
-      >Clear</button>
+      <span class="text-slate-500 text-sm">{{ filteredUsers.length }} user ditampilkan</span>
     </div>
 
-    <!-- Loading / Empty -->
-    <div v-if="loading" class="p-8 text-center text-slate-500">Loading report...</div>
-    <div v-else-if="groupedRows.length === 0" class="p-8 text-center text-slate-500">No time data found.</div>
+    <!-- Loading -->
+    <div v-if="loading" class="text-center py-16 text-slate-500">Memuat data...</div>
 
-    <!-- User Sections -->
-    <div v-else class="space-y-6">
-      <div
-        v-for="group in groupedRows"
-        :key="group.user_id"
-        class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden"
-      >
-        <!-- User Header -->
-        <div class="flex items-center justify-between px-5 py-3 border-b border-slate-800 bg-slate-800/40">
-          <div>
-            <span class="text-white font-bold">{{ group.display_name }}</span>
-            <span class="text-slate-500 text-xs ml-2">@{{ group.username }}</span>
-          </div>
-          <span class="text-emerald-400 font-bold text-sm">{{ formatMinutes(group.total) }} total</span>
-        </div>
-
-        <!-- Project rows -->
-        <table class="w-full text-sm">
-          <tbody>
-            <tr
-              v-for="row in group.projects"
-              :key="row.project_id || 'no-project'"
-              class="border-b border-slate-800/40 hover:bg-slate-800/20 transition-colors"
-            >
-              <td class="px-5 py-3">
-                <span v-if="row.project_name" class="inline-flex items-center gap-2">
-                  <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ background: row.project_color || '#64748b' }"></span>
-                  <span class="text-slate-300">{{ row.project_name }}</span>
-                </span>
-                <span v-else class="text-slate-600 italic">No Project</span>
-              </td>
-              <td class="px-5 py-3 text-right">
-                <!-- Progress bar -->
-                <div class="flex items-center gap-3 justify-end">
-                  <div class="w-32 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      class="h-full rounded-full bg-emerald-500 transition-all"
-                      :style="{ width: `${Math.min(100, (row.total_minutes / group.total) * 100)}%` }"
-                    ></div>
+    <!-- Table -->
+    <div v-else class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-slate-800">
+            <th class="text-left px-5 py-3 text-slate-500 font-semibold uppercase tracking-widest text-xs">User / Project</th>
+            <th class="text-right px-5 py-3 text-slate-500 font-semibold uppercase tracking-widest text-xs">Jam {{ monthLabel }}</th>
+            <th class="text-right px-5 py-3 text-slate-500 font-semibold uppercase tracking-widest text-xs">Total Semua</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template v-for="user in filteredUsers" :key="user.id">
+            <!-- User header row -->
+            <tr class="border-t border-slate-800 bg-slate-800/40">
+              <td class="px-5 py-3" colspan="3">
+                <div class="flex items-center gap-2">
+                  <div class="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
+                    {{ (user.full_name || user.username).charAt(0).toUpperCase() }}
                   </div>
-                  <span class="text-slate-300 font-semibold text-xs w-16 text-right">{{ formatMinutes(row.total_minutes) }}</span>
+                  <div>
+                    <span class="text-white font-bold">{{ user.full_name || user.username }}</span>
+                    <span class="text-slate-500 text-xs ml-2">@{{ user.username }}</span>
+                  </div>
                 </div>
               </td>
             </tr>
-          </tbody>
-        </table>
-      </div>
+            <!-- Project rows -->
+            <tr
+              v-for="row in user.projects"
+              :key="row.project_id || 'no-project'"
+              class="border-t border-slate-800/50 hover:bg-slate-800/30 transition-colors"
+            >
+              <td class="px-5 py-2.5 pl-14">
+                <div class="flex items-center gap-2">
+                  <span
+                    class="w-2 h-2 rounded-full flex-shrink-0"
+                    :style="{ backgroundColor: row.project_color || '#64748b' }"
+                  ></span>
+                  <span class="text-slate-300">{{ row.project_name || 'No Project' }}</span>
+                </div>
+              </td>
+              <td class="px-5 py-2.5 text-right">
+                <span :class="row.minutes_this_period > 0 ? 'text-emerald-400 font-semibold' : 'text-slate-600'">
+                  {{ formatHours(row.minutes_this_period) }}
+                </span>
+              </td>
+              <td class="px-5 py-2.5 text-right text-slate-400">{{ formatHours(row.minutes_all_time) }}</td>
+            </tr>
+            <!-- User subtotal -->
+            <tr class="border-t border-slate-700 bg-slate-800/20">
+              <td class="px-5 py-2.5 pl-14 text-slate-500 text-xs font-semibold uppercase tracking-wide">Subtotal</td>
+              <td class="px-5 py-2.5 text-right font-bold text-emerald-400">{{ formatHours(user.totalPeriod) }}</td>
+              <td class="px-5 py-2.5 text-right font-bold text-blue-400">{{ formatHours(user.totalAllTime) }}</td>
+            </tr>
+          </template>
+
+          <!-- Grand Total -->
+          <tr v-if="filteredUsers.length > 0" class="border-t-2 border-slate-600 bg-slate-800/60">
+            <td class="px-5 py-3 font-black text-white uppercase tracking-wide text-xs">Grand Total</td>
+            <td class="px-5 py-3 text-right font-black text-emerald-400 text-base">{{ formatHours(grandTotalPeriod) }}</td>
+            <td class="px-5 py-3 text-right font-black text-blue-400 text-base">{{ formatHours(grandTotalAllTime) }}</td>
+          </tr>
+
+          <!-- Empty -->
+          <tr v-if="filteredUsers.length === 0 && !loading">
+            <td colspan="3" class="px-5 py-12 text-center text-slate-500">Tidak ada data untuk periode ini.</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
-    <!-- Footer -->
-    <div class="mt-3 text-xs text-slate-600 text-right">
-      Showing {{ filteredRows.length }} entries across {{ groupedRows.length }} users
+    <!-- Footer info -->
+    <div class="mt-3 text-right text-xs text-slate-600">
+      Menampilkan {{ filteredUsers.length }} user · {{ totalProjectRows }} entri project
     </div>
   </div>
 </template>
@@ -104,83 +133,104 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 
-const auth = useAuthStore()
-const rows = ref([])
-const loading = ref(true)
-const filterUser = ref('')
+definePageMeta({ middleware: 'auth' })
 
-onMounted(async () => {
-  if (!auth.isAdmin) {
-    navigateTo('/')
-    return
-  }
-  await fetchReport()
+const auth = useAuthStore()
+
+// Current month as YYYY-MM
+const now = new Date()
+const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+const selectedMonth = ref(currentMonth)
+const filterUser = ref('')
+const loading = ref(false)
+const rows = ref([])
+
+const monthLabel = computed(() => {
+  const [y, m] = selectedMonth.value.split('-')
+  return new Date(+y, +m - 1, 1).toLocaleString('id-ID', { month: 'long', year: 'numeric' })
 })
+
+function prevMonth() {
+  const [y, m] = selectedMonth.value.split('-').map(Number)
+  const d = new Date(y, m - 2, 1)
+  selectedMonth.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  fetchReport()
+}
+function nextMonth() {
+  const [y, m] = selectedMonth.value.split('-').map(Number)
+  const d = new Date(y, m, 1)
+  selectedMonth.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  fetchReport()
+}
 
 async function fetchReport() {
   loading.value = true
-  const { data, error } = await useFetch('/api/admin/time-report', {
-    headers: { Authorization: `Bearer ${auth.token}` }
-  })
-  if (data.value) rows.value = data.value
-  if (error.value) console.error('Failed to fetch time report', error.value)
-  loading.value = false
+  try {
+    const token = auth.token
+    const res = await fetch(`/api/admin/time-report?month=${selectedMonth.value}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    const data = await res.json()
+    rows.value = data.rows || []
+  } catch (e) {
+    rows.value = []
+  } finally {
+    loading.value = false
+  }
 }
 
-// ── Computed ──
+// Group rows by user
 const uniqueUsers = computed(() => {
-  const seen = new Map()
-  for (const r of rows.value) {
-    if (!seen.has(r.user_id)) {
-      seen.set(r.user_id, {
-        id: r.user_id,
-        display: r.full_name ? `${r.full_name} (@${r.username})` : r.username
-      })
-    }
-  }
-  return [...seen.values()]
-})
-
-const filteredRows = computed(() => {
-  if (!filterUser.value) return rows.value
-  return rows.value.filter(r => r.user_id === filterUser.value)
-})
-
-const groupedRows = computed(() => {
   const map = new Map()
-  for (const r of filteredRows.value) {
-    if (!map.has(r.user_id)) {
-      map.set(r.user_id, {
-        user_id: r.user_id,
-        username: r.username,
-        display_name: r.full_name || r.username,
-        total: 0,
-        projects: []
+  for (const row of rows.value) {
+    if (!map.has(row.user_id)) {
+      map.set(row.user_id, {
+        id: row.user_id,
+        username: row.username,
+        full_name: row.full_name,
+        projects: [],
+        totalPeriod: 0,
+        totalAllTime: 0,
       })
     }
-    const group = map.get(r.user_id)
-    group.total += r.total_minutes
-    group.projects.push(r)
+    const user = map.get(row.user_id)
+    // Only add project rows that have actual data or a project
+    if (row.project_id || row.minutes_all_time > 0) {
+      user.projects.push(row)
+    }
+    user.totalPeriod += row.minutes_this_period
+    user.totalAllTime += row.minutes_all_time
   }
-  // Sort by total desc
-  return [...map.values()].sort((a, b) => b.total - a.total)
+  return [...map.values()]
 })
 
-const totalHours = computed(() => {
-  const mins = rows.value.reduce((acc, r) => acc + (r.total_minutes || 0), 0)
-  return (mins / 60).toFixed(1)
+const filteredUsers = computed(() => {
+  if (!filterUser.value) return uniqueUsers.value
+  return uniqueUsers.value.filter(u => u.id === filterUser.value)
 })
 
+const grandTotalPeriod = computed(() =>
+  filteredUsers.value.reduce((s, u) => s + u.totalPeriod, 0)
+)
+const grandTotalAllTime = computed(() =>
+  filteredUsers.value.reduce((s, u) => s + u.totalAllTime, 0)
+)
 const mostActiveUser = computed(() => {
-  if (groupedRows.value.length === 0) return '—'
-  const top = groupedRows.value[0]
-  return top.display_name
+  if (!uniqueUsers.value.length) return '—'
+  const top = [...uniqueUsers.value].sort((a, b) => b.totalPeriod - a.totalPeriod)[0]
+  return top.full_name || top.username
 })
+const totalProjectRows = computed(() =>
+  filteredUsers.value.reduce((s, u) => s + u.projects.length, 0)
+)
 
-function formatMinutes(mins) {
-  if (!mins || mins === 0) return '0m'
-  const h = Math.floor(mins / 60)
-  const m = mins % 60
-  return h > 0 ? `${h}h ${m}m` : `${m}m`
+function formatHours(minutes) {
+  if (!minutes) return '0h'
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  if (m === 0) return `${h}h`
+  return `${h}h ${m}m`
 }
+
+onMounted(fetchReport)
 </script>

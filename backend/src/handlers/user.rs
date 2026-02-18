@@ -190,7 +190,7 @@ pub async fn update_profile(
     }
 }
 
-// Admin only: Time report — total minutes per user per project
+// Admin only: Time report — total minutes per user per project (monthly + all-time)
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct TimeReportRow {
     pub user_id: String,
@@ -199,10 +199,20 @@ pub struct TimeReportRow {
     pub project_id: Option<String>,
     pub project_name: Option<String>,
     pub project_color: Option<String>,
-    pub total_minutes: i64,
+    pub minutes_this_period: i64,
+    pub minutes_all_time: i64,
 }
 
-pub async fn get_time_report_admin(pool: web::Data<DbPool>, req: HttpRequest) -> impl Responder {
+#[derive(Debug, serde::Deserialize)]
+pub struct TimeReportQuery {
+    pub month: Option<String>, // format: "YYYY-MM", default = current month
+}
+
+pub async fn get_time_report_admin(
+    pool: web::Data<DbPool>,
+    req: HttpRequest,
+    query: web::Query<TimeReportQuery>,
+) -> impl Responder {
     let role = {
         let ext = req.extensions();
         match ext.get::<AuthClaims>() {
@@ -214,36 +224,55 @@ pub async fn get_time_report_admin(pool: web::Data<DbPool>, req: HttpRequest) ->
         return HttpResponse::Forbidden().body("Admin only");
     }
 
-    // superadmin sees everyone; admin sees only 'user' role
-    let sql = if role == "superadmin" {
-        "SELECT u.id AS user_id, u.username, u.full_name,
-                p.id AS project_id, p.name AS project_name, p.color AS project_color,
-                COALESCE(SUM(e.duration_minutes), 0)::BIGINT AS total_minutes
-         FROM users u
-         LEFT JOIN time_entries e ON e.user_id = u.id
-         LEFT JOIN tasks t ON t.id = e.task_id
-         LEFT JOIN projects p ON p.id = t.project_id
-         GROUP BY u.id, u.username, u.full_name, p.id, p.name, p.color
-         ORDER BY u.username, total_minutes DESC"
-    } else {
-        "SELECT u.id AS user_id, u.username, u.full_name,
-                p.id AS project_id, p.name AS project_name, p.color AS project_color,
-                COALESCE(SUM(e.duration_minutes), 0)::BIGINT AS total_minutes
-         FROM users u
-         LEFT JOIN time_entries e ON e.user_id = u.id
-         LEFT JOIN tasks t ON t.id = e.task_id
-         LEFT JOIN projects p ON p.id = t.project_id
-         WHERE u.role = 'user'
-         GROUP BY u.id, u.username, u.full_name, p.id, p.name, p.color
-         ORDER BY u.username, total_minutes DESC"
+    // Determine month filter — default to current month
+    let month = query.month.clone().unwrap_or_else(|| {
+        chrono::Utc::now().format("%Y-%m").to_string()
+    });
+
+    // Parse month into start/end timestamps
+    let month_start = format!("{}-01T00:00:00Z", month);
+    let month_end = {
+        let parts: Vec<&str> = month.split('-').collect();
+        if parts.len() == 2 {
+            let year: i32 = parts[0].parse().unwrap_or(2026);
+            let mon: u32 = parts[1].parse().unwrap_or(1);
+            let (next_year, next_month) = if mon == 12 { (year + 1, 1) } else { (year, mon + 1) };
+            format!("{:04}-{:02}-01T00:00:00Z", next_year, next_month)
+        } else {
+            format!("{}-01T00:00:00Z", month)
+        }
     };
 
-    let result = query_as::<_, TimeReportRow>(sql)
+    let role_filter = if role == "superadmin" { "" } else { "AND u.role = 'user'" };
+
+    let sql = format!(
+        "SELECT u.id AS user_id, u.username, u.full_name,
+                p.id AS project_id, p.name AS project_name, p.color AS project_color,
+                COALESCE(SUM(CASE
+                    WHEN e.start_time >= $1 AND e.start_time < $2
+                    THEN e.duration_minutes ELSE 0
+                END), 0)::BIGINT AS minutes_this_period,
+                COALESCE(SUM(e.duration_minutes), 0)::BIGINT AS minutes_all_time
+         FROM users u
+         LEFT JOIN time_entries e ON e.user_id = u.id
+         LEFT JOIN tasks t ON t.id = e.task_id
+         LEFT JOIN projects p ON p.id = t.project_id
+         WHERE 1=1 {role_filter}
+         GROUP BY u.id, u.username, u.full_name, p.id, p.name, p.color
+         ORDER BY u.username, minutes_all_time DESC"
+    );
+
+    let result = sqlx::query_as::<_, TimeReportRow>(&sql)
+        .bind(&month_start)
+        .bind(&month_end)
         .fetch_all(pool.get_ref())
         .await;
 
     match result {
-        Ok(rows) => HttpResponse::Ok().json(rows),
+        Ok(rows) => HttpResponse::Ok().json(serde_json::json!({
+            "month": month,
+            "rows": rows,
+        })),
         Err(e) => {
             eprintln!("get_time_report_admin error: {:?}", e);
             HttpResponse::InternalServerError().finish()
